@@ -52,9 +52,62 @@ function! s:SetVariables(dst, locs)
 endfunction
 
 "
+" s:FSDiscoverSubdirWithHeaders
+"
+" Intelligently discover subdirectories that contain header files
+" Returns a list of relative paths to subdirectories containing headers
+"
+function! s:FSDiscoverSubdirWithHeaders(filepath, filename, extensions)
+    let discovered = []
+    let basedir = a:filepath
+    
+    " Look for subdirectories containing header files with the same base name
+    for ext in a:extensions
+        let pattern = basedir . s:os_slash . '*' . s:os_slash . a:filename . '.' . ext
+        let matches = glob(pattern, 0, 1)
+        for match in matches
+            let subdir = fnamemodify(match, ':h')
+            let relpath = substitute(subdir, '^' . escape(basedir . s:os_slash, '/\'), '', '')
+            if index(discovered, 'rel:' . relpath) == -1
+                call add(discovered, 'rel:' . relpath)
+            endif
+        endfor
+    endfor
+    
+    return discovered
+endfunction
+
+"
+" s:FSDiscoverParentWithSources
+"
+" Find parent directories that contain source files with matching names
+" Returns a list of relative paths to parent directories containing sources
+"
+function! s:FSDiscoverParentWithSources(filepath, filename, extensions)
+    let discovered = []
+    
+    " Try common parent directory patterns including current directory
+    let potential_parents = ['.', '..', '../..', '../../..']
+    
+    for parent_rel in potential_parents
+        for ext in a:extensions
+            let parent_abs = simplify(a:filepath . s:os_slash . parent_rel)
+            let sourcefile = parent_abs . s:os_slash . a:filename . '.' . ext
+            if filereadable(sourcefile)
+                if index(discovered, 'rel:' . parent_rel) == -1
+                    call add(discovered, 'rel:' . parent_rel)
+                endif
+            endif
+        endfor
+    endfor
+    
+    return discovered
+endfunction
+
+"
 " s:FSGetLocations
 "
-" Return the list of possible locations
+" Return the list of possible locations, with intelligent discovery
 "
 function! s:FSGetLocations()
     let locations = []
@@ -232,6 +285,8 @@ function! s:FSReturnCompanionFilename(filename, mustBeReadable)
     let locations = s:FSGetLocations()
     let mustmatch = s:FSGetMustMatch()
     let newpath = ''
+    
+    " First try the standard configured locations
     for currentExt in extensions
         for loc in locations
             for filenameMutation in filenameMutations
@@ -248,6 +303,37 @@ function! s:FSReturnCompanionFilename(filename, mustBeReadable)
             endfor
         endfor
     endfor
+    
+    " If standard locations failed, try intelligent discovery
+    if newpath == '' || (a:mustBeReadable == 1 && !filereadable(newpath))
+        " For source files, look for headers in subdirectories
+        if ext =~ '^\(c\|cpp\|cc\|cxx\|C\|m\)$'
+            let discovered_locations = s:FSDiscoverSubdirWithHeaders(fullpath, justfile, extensions)
+        " For header files, look for sources in parent directories  
+        elseif ext =~ '^\(h\|hpp\|hh\|hxx\|H\)$'
+            let discovered_locations = s:FSDiscoverParentWithSources(fullpath, justfile, extensions)
+        else
+            let discovered_locations = []
+        endif
+        
+        " Try the discovered locations
+        for currentExt in extensions
+            for loc in discovered_locations
+                for filenameMutation in filenameMutations
+                    let mutatedFilename = s:FSMutateFilename(justfile, filenameMutation)
+                    let newpath = s:FSGetAlternateFilename(fullpath, mutatedFilename, currentExt, loc, mustmatch)
+                    if a:mustBeReadable == 0 && newpath != ''
+                        return newpath
+                    elseif a:mustBeReadable == 1
+                        let newpath = glob(newpath)
+                        if filereadable(newpath)
+                            return newpath
+                        endif
+                    endif
+                endfor
+            endfor
+        endfor
+    endif
 
     return newpath
 endfunction

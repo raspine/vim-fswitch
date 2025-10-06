@@ -1,1 +1,21 @@
 This Vim plugin will help switching between companion files (e.g. ".h" and ".cpp" files)
+
+**Enhancement in this fork**
+
+This fork adds intelligent directory discovery to handle more complex project structures that the original plugin couldn't handle.
+
+The plugin now automatically detects companion files in:
+
+**Scoped headers:**
+```
+src/file.cpp ↔ src/myproject/file.hpp
+src/file.cpp ↔ src/namespace/file.hpp
+```
+
+**Nested structures:**
+```
+project/src/file.cpp ↔ project/src/include/file.hpp
+project/src/module/file.cpp ↔ project/src/module/public/file.hpp
+```
+
+No configuration required - it works automatically as a fallback when standard patterns fail.
