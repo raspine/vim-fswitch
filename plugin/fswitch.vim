@@ -307,7 +307,7 @@ function! s:FSReturnCompanionFilename(filename, mustBeReadable)
     " If standard locations failed, try intelligent discovery
     if newpath == '' || (a:mustBeReadable == 1 && !filereadable(newpath))
         " For source files, look for headers in subdirectories
-        if ext =~ '^\(c\|cpp\|cc\|cxx\|C\|m\)$'
+        if ext =~ '^\(c\|cpp\|cc\|cxx\|C\|m\|xc\)$'
             let discovered_locations = s:FSDiscoverSubdirWithHeaders(fullpath, justfile, extensions)
         " For header files, look for sources in parent directories  
         elseif ext =~ '^\(h\|hpp\|hh\|hxx\|H\)$'
@@ -427,7 +427,8 @@ augroup fswitch_au_group
     au BufEnter *.cxx  call s:SetVariables('hxx',     'reg:/src/include/,reg:|src|include/**|,ifrel:|/src/|../include|')
     au BufEnter *.C    call s:SetVariables('H',       'reg:/src/include/,reg:|src|include/**|,ifrel:|/src/|../include|')
     au BufEnter *.m    call s:SetVariables('h',       'reg:/src/include/,reg:|src|include/**|,ifrel:|/src/|../include|')
-    au BufEnter *.h    call s:SetVariables('c,cpp,m', 'reg:/include/src/,reg:/include.*/src/,ifrel:|/include/|../src|')
+    au BufEnter *.xc   call s:SetVariables('h',       'reg:/src/include/,reg:|src|include/**|,ifrel:|/src/|../include|')
+    au BufEnter *.h    call s:SetVariables('c,cpp,m,xc', 'reg:/include/src/,reg:/include.*/src/,ifrel:|/include/|../src|')
     au BufEnter *.hh   call s:SetVariables('cc',      'reg:/include/src/,reg:/include.*/src/,ifrel:|/include/|../src|')
     au BufEnter *.hpp  call s:SetVariables('cpp',     'reg:/include/src/,reg:/include.*/src/,ifrel:|/include/|../src|')
     au BufEnter *.hxx  call s:SetVariables('cxx',     'reg:/include/src/,reg:/include.*/src/,ifrel:|/include/|../src|')
